@@ -13,7 +13,7 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <flink.version>2.0.0</flink.version>
-    <datafaker.version>1.9.0</datafaker.version>
+    <datafaker.version>2.5.3</datafaker.version>
     <java.version>17</java.version>
     <maven.compiler.source>${java.version}</maven.compiler.source>
     <maven.compiler.target>${java.version}</maven.compiler.target>
