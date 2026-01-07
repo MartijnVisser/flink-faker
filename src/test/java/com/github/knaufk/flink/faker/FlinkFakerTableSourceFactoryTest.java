@@ -3,46 +3,60 @@ package com.github.knaufk.flink.faker;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatExceptionOfType;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.table.api.*;
-import org.apache.flink.table.api.internal.TableEnvironmentInternal;
-import org.apache.flink.table.catalog.*;
+import org.apache.flink.table.api.DataTypes;
+import org.apache.flink.table.api.Schema;
+import org.apache.flink.table.api.ValidationException;
+import org.apache.flink.table.catalog.CatalogTable;
+import org.apache.flink.table.catalog.Column;
+import org.apache.flink.table.catalog.ObjectIdentifier;
+import org.apache.flink.table.catalog.ResolvedCatalogTable;
+import org.apache.flink.table.catalog.ResolvedSchema;
 import org.apache.flink.table.connector.source.DynamicTableSource;
+import org.apache.flink.table.factories.DynamicTableFactory;
 import org.apache.flink.table.factories.FactoryUtil;
 import org.junit.jupiter.api.Test;
 
 class FlinkFakerTableSourceFactoryTest {
 
-  private static final Schema VALID_SCHEMA =
-      Schema.newBuilder()
-          .column("f0", DataTypes.TINYINT())
-          .column("f1", DataTypes.SMALLINT())
-          .column("f2", DataTypes.INT())
-          .column("f3", DataTypes.BIGINT())
-          .column("f4", DataTypes.DOUBLE())
-          .column("f5", DataTypes.FLOAT())
-          .column("f6", DataTypes.DECIMAL(6, 2))
-          .column("f7", DataTypes.CHAR(10))
-          .column("f8", DataTypes.VARCHAR(255))
-          .column("f9", DataTypes.STRING())
-          .column("f10", DataTypes.BOOLEAN())
-          .column("f11", DataTypes.ARRAY(DataTypes.INT()))
-          .column("f12", DataTypes.MAP(DataTypes.INT(), DataTypes.VARCHAR(255)))
-          .column("f13", DataTypes.ROW(DataTypes.FIELD("age", DataTypes.INT())))
-          .column("f14", DataTypes.MULTISET(DataTypes.CHAR(10)))
-          .build();
+  private static final ResolvedSchema VALID_SCHEMA =
+      new ResolvedSchema(
+          Arrays.asList(
+              Column.physical("f0", DataTypes.TINYINT()),
+              Column.physical("f1", DataTypes.SMALLINT()),
+              Column.physical("f2", DataTypes.INT()),
+              Column.physical("f3", DataTypes.BIGINT()),
+              Column.physical("f4", DataTypes.DOUBLE()),
+              Column.physical("f5", DataTypes.FLOAT()),
+              Column.physical("f6", DataTypes.DECIMAL(6, 2)),
+              Column.physical("f7", DataTypes.CHAR(10)),
+              Column.physical("f8", DataTypes.VARCHAR(255)),
+              Column.physical("f9", DataTypes.STRING()),
+              Column.physical("f10", DataTypes.BOOLEAN()),
+              Column.physical("f11", DataTypes.ARRAY(DataTypes.INT())),
+              Column.physical("f12", DataTypes.MAP(DataTypes.INT(), DataTypes.VARCHAR(255))),
+              Column.physical("f13", DataTypes.ROW(DataTypes.FIELD("age", DataTypes.INT()))),
+              Column.physical("f14", DataTypes.MULTISET(DataTypes.CHAR(10)))),
+          Collections.emptyList(),
+          null);
 
-  private static final Schema INVALID_SCHEMA =
-      Schema.newBuilder()
-          .column("f0", DataTypes.STRING())
-          .column("f1", DataTypes.VARCHAR(100))
-          .column("f2", DataTypes.NULL())
-          .build();
+  private static final ResolvedSchema INVALID_SCHEMA =
+      new ResolvedSchema(
+          Arrays.asList(
+              Column.physical("f0", DataTypes.STRING()),
+              Column.physical("f1", DataTypes.VARCHAR(100)),
+              Column.physical("f2", DataTypes.NULL())),
+          Collections.emptyList(),
+          null);
 
-  private static final Schema TINY_SCHEMA =
-      Schema.newBuilder().column("f0", DataTypes.TINYINT()).build();
+  private static final ResolvedSchema TINY_SCHEMA =
+      new ResolvedSchema(
+          Collections.singletonList(Column.physical("f0", DataTypes.TINYINT())),
+          Collections.emptyList(),
+          null);
 
   @Test
   public void testSchemaWithNonSupportedTypesIsInvalid() {
@@ -178,31 +192,70 @@ class FlinkFakerTableSourceFactoryTest {
     properties.put("fields.f1.expression", "#{date.past '15','SECONDS'}");
     properties.put("fields.f2.expression", "#{date.past '15','SECONDS'}");
 
-    Schema schema =
-        Schema.newBuilder()
-            .column("f0", DataTypes.TIMESTAMP())
-            .column("f1", DataTypes.TIMESTAMP_WITH_LOCAL_TIME_ZONE())
-            .column("f2", DataTypes.TIMESTAMP_WITH_TIME_ZONE())
-            .build();
+    ResolvedSchema schema =
+        new ResolvedSchema(
+            Arrays.asList(
+                Column.physical("f0", DataTypes.TIMESTAMP()),
+                Column.physical("f1", DataTypes.TIMESTAMP_WITH_LOCAL_TIME_ZONE()),
+                Column.physical("f2", DataTypes.TIMESTAMP_WITH_TIME_ZONE())),
+            Collections.emptyList(),
+            null);
 
     createTableSource(properties, schema);
   }
 
-  private DynamicTableSource createTableSource(Map<String, String> properties, Schema schema) {
+  private DynamicTableSource createTableSource(
+      Map<String, String> properties, ResolvedSchema resolvedSchema) {
 
-    EnvironmentSettings settings = EnvironmentSettings.newInstance().inStreamingMode().build();
-    TableEnvironment tableEnv = TableEnvironment.create(settings);
-    TableEnvironmentInternal tableEnvInternal = (TableEnvironmentInternal) tableEnv;
+    // Convert ResolvedSchema to Schema for CatalogTable
+    Schema.Builder schemaBuilder = Schema.newBuilder();
+    for (Column column : resolvedSchema.getColumns()) {
+      if (column instanceof Column.PhysicalColumn) {
+        schemaBuilder.column(column.getName(), column.getDataType());
+      }
+    }
+    Schema schema = schemaBuilder.build();
 
-    CatalogTable table = CatalogTable.of(schema, "comment", Arrays.asList(), properties);
+    CatalogTable catalogTable =
+        CatalogTable.newBuilder()
+            .schema(schema)
+            .partitionKeys(Collections.emptyList())
+            .options(properties)
+            .build();
 
-    return FactoryUtil.createDynamicTableSource(
-        null,
-        ObjectIdentifier.of("", "", ""),
-        tableEnvInternal.getCatalogManager().resolveCatalogTable(table),
-        new HashMap<>(),
-        new Configuration(),
-        Thread.currentThread().getContextClassLoader(),
-        false);
+    ResolvedCatalogTable resolvedCatalogTable =
+        new ResolvedCatalogTable(catalogTable, resolvedSchema);
+
+    FlinkFakerTableSourceFactory factory = new FlinkFakerTableSourceFactory();
+
+    DynamicTableFactory.Context context =
+        new DynamicTableFactory.Context() {
+          @Override
+          public ObjectIdentifier getObjectIdentifier() {
+            return ObjectIdentifier.of("default_catalog", "default_database", "test_table");
+          }
+
+          @Override
+          public ResolvedCatalogTable getCatalogTable() {
+            return resolvedCatalogTable;
+          }
+
+          @Override
+          public Configuration getConfiguration() {
+            return new Configuration();
+          }
+
+          @Override
+          public ClassLoader getClassLoader() {
+            return Thread.currentThread().getContextClassLoader();
+          }
+
+          @Override
+          public boolean isTemporary() {
+            return true;
+          }
+        };
+
+    return factory.createDynamicTableSource(context);
   }
 }
