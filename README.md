@@ -2,12 +2,11 @@
 
 # flink-faker
 
-flink-faker is an Apache Flink [table source](https://ci.apache.org/projects/flink/flink-docs-release-1.11/dev/table/connectors/)
+flink-faker is an Apache Flink [table source](https://nightlies.apache.org/flink/flink-docs-stable/docs/dev/table/sourcessinks/)
 that generates fake data based on the [Data Faker](https://github.com/datafaker-net/datafaker) expression
 provided for each column.
 
-Checkout this [demo web application](https://java-faker.herokuapp.com/) for some example Java Faker
-(fully compatible with Data Faker) expressions and [Data Faker documentation](https://www.datafaker.net/documentation/providers/).
+Checkout the [Data Faker documentation](https://www.datafaker.net/documentation/providers/) for available providers and expressions.
 
 This project is inspired by [voluble](https://github.com/MichaelDrogalis/voluble).
 
@@ -19,17 +18,15 @@ mvn clean package
 
 ## Compatibility Matrix
 
-| Flink Version | flink-faker Version |
-|---------------|---------------------|
-| 1.11          | 0.1.x - 0.4.x       |
-| 1.12          | 0.1.x - 0.4.x       |
-| 1.13          | 0.1.x - 0.4.x       |
-| 1.14          | 0.1.x - 0.4.x       |
-| 1.15          | 0.5.0               |
-| 1.16          | 0.5.1+              |
-| 1.17          | 0.5.1+              |
+| Flink Version | flink-faker Version | Java Version |
+|---------------|---------------------|--------------|
+| 2.0+          | 1.0.0+              | 17+          |
+| 1.15 - 1.17   | 0.5.x               | 11+          |
+| 1.11 - 1.14   | 0.1.x - 0.4.x       | 8+           |
 
-There are no automated tests that check this compatibility. So, please treat this table as "best knowledge". 
+**Note:** Version 1.0.0 requires Java 17 and is only compatible with Flink 2.0+.
+
+There are no automated tests that check this compatibility. So, please treat this table as "best knowledge".
 If you notice any incompatibilities please open an issue.
 
 ## Using flink-faker with the Flink SQL Client
@@ -37,8 +34,8 @@ If you notice any incompatibilities please open an issue.
 1. Download Flink from the [Apache Flink website](https://flink.apache.org/downloads.html).
 2. Download the flink-faker JAR from the [Releases](https://github.com/knaufk/flink-faker/releases) page (or [build it yourself](#package)).
 3. Put the downloaded jars under `lib/`.
-4. (Re)Start a [Flink cluster](https://ci.apache.org/projects/flink/flink-docs-stable/docs/try-flink/local_installation/#step-2-start-a-cluster).
-5. (Re)Start the [Flink CLI](https://ci.apache.org/projects/flink/flink-docs-stable/docs/dev/table/sqlclient/).
+4. (Re)Start a [Flink cluster](https://nightlies.apache.org/flink/flink-docs-stable/docs/try-flink/local_installation/#step-2-start-a-cluster).
+5. (Re)Start the [Flink CLI](https://nightlies.apache.org/flink/flink-docs-stable/docs/dev/table/sqlclient/).
 
 ## Usage
 
@@ -211,6 +208,6 @@ SELECT * FROM orders;
 
 ## License
 
-Copyright © 2020-2023 Konstantin Knauf
+Copyright © 2020-2025 Konstantin Knauf
 
 Distributed under Apache License, Version 2.0.
